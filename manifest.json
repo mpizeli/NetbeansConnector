@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "NetBeans ZK Refresh Bridge",
+  "version": "0.6",
+  "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgo89CrO8f/2srD2BGUP9+dG4IkTC2D3gzEjXITaMaQgy8B4ObVpkA3bc27qc7HB9jhVj8P51aAETr89u+AvFgCeFtvtva0h0oodKRC3dCkQLnEWPGi7mEKB98cRhZmQ1Wa9A9tg3plKsujwwWskaFEL/hO7uu7myF0qLIeuiG6wIDAQAB",
+  "description": "Receives NetBeans reload messages and refreshes IDE-managed tabs.",
+  "minimum_chrome_version": "120",
+  "permissions": ["tabs", "alarms"],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src ws://127.0.0.1:8008/;"
+  }
+}
