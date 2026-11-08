@@ -1,4 +1,4 @@
-# NetBeans ZK Refresh Bridge
+# Netbeans ReConnector
 
 This is a small Manifest V3 Chrome extension that implements only the reload
 part of the NetBeans Connector protocol. It connects to NetBeans at
@@ -7,7 +7,7 @@ an accepted tab when NetBeans sends a `reload` message.
 
 The manifest includes the original Connector public key so Chrome assigns the
 same extension ID that NetBeans checks (`hafdlehgocfcodbgjnpecfajgkeejnaa`).
-The extension package itself is still a local Manifest V3 build, version 0.16.
+The extension package is a local Manifest V3 build, version 0.24.
 
 ## Install for a local trial
 
@@ -38,6 +38,10 @@ not start the listener.
   `file://` hand-off page. It refreshes only tabs that NetBeans explicitly
   accepts; it does not refresh unrelated browser tabs.
 - Reloads bypass the browser cache, matching the old Connector behavior.
+- The toolbar icon is enabled for tabs accepted by NetBeans while the connection is open.
+- For the tab being inspected by NetBeans, open the toolbar menu and choose
+  **Inspect in NetBeans Mode**, then select an element in the page to locate it
+  in Browser DOM. Use the same menu to stop selection mode.
 - This first version targets the NetBeans Connector WebSocket protocol on
   loopback port `8008` and Chrome 120 or later.
 - It forwards the Chrome DevTools Protocol commands needed by NetBeans' browser

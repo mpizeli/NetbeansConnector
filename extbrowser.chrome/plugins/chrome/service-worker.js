@@ -10,6 +10,8 @@ const RECONNECT_MS = 3_000;
 let socket = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
+let inspectionTabId = null;
+let selectionMode = false;
 const tabsById = new Map();
 const debuggerTabs = new Set();
 const debuggerAttaching = new Set();
@@ -17,6 +19,14 @@ const queuedDebuggerCommands = new Map();
 
 function log(...args) {
   console.info(`[${new Date().toISOString()}] [NetBeans]`, ...args);
+}
+
+function updateToolbarAction(tabId) {
+  if (typeof tabId !== "number") return;
+  const managed = socket?.readyState === WebSocket.OPEN &&
+    tabsById.get(tabId)?.status === "managed";
+  const update = managed ? chrome.action.enable(tabId) : chrome.action.disable(tabId);
+  update.catch(error => log(`Could not update toolbar icon for tab ${tabId}`, error));
 }
 
 function send(message) {
@@ -49,7 +59,10 @@ function sendInit(tab) {
 async function initializeExistingTabs() {
   try {
     const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) sendInit(tab);
+    for (const tab of tabs) {
+      updateToolbarAction(tab.id);
+      sendInit(tab);
+    }
   } catch (error) {
     log("Could not inspect open tabs", error);
   }
@@ -84,6 +97,7 @@ function handleMessage(data) {
       log(`NetBeans did not manage tab ${tabId}:`, state.url);
       tabsById.delete(tabId);
     }
+    updateToolbarAction(tabId);
     return;
   }
 
@@ -110,7 +124,20 @@ function handleMessage(data) {
   }
 
   if (message.message === "attach_debugger") {
-    attachDebugger(Number(message.tabId));
+    const tabId = Number(message.tabId);
+    if (tabsById.get(tabId)?.status === "managed") {
+      // The NetBeans page inspector has one active tab per connection.
+      inspectionTabId = tabId;
+      selectionMode = false;
+    }
+    attachDebugger(tabId);
+    return;
+  }
+
+  if (message.message === "pageInspectionPropertyChange") {
+    if (message.propertyName === "selectionMode" && typeof message.propertyValue === "boolean") {
+      selectionMode = message.propertyValue;
+    }
     return;
   }
 
@@ -191,6 +218,7 @@ function attachDebugger(tabId) {
     }
 
     debuggerTabs.add(tabId);
+    updateToolbarAction(tabId);
     log(`Attached Chrome debugger to tab ${tabId}`);
     const queued = queuedDebuggerCommands.get(tabId) || [];
     queuedDebuggerCommands.delete(tabId);
@@ -208,6 +236,7 @@ function detachDebugger(tabId) {
 
 chrome.debugger.onEvent.addListener((source, method, params) => {
   if (typeof source.tabId !== "number") return;
+  if (method === "Page.loadEventFired") updateToolbarAction(source.tabId);
   send({
     message: "debugger_command_response",
     tabId: source.tabId,
@@ -221,6 +250,10 @@ chrome.debugger.onDetach.addListener(source => {
   debuggerTabs.delete(tabId);
   debuggerAttaching.delete(tabId);
   queuedDebuggerCommands.delete(tabId);
+  if (inspectionTabId === tabId) {
+    inspectionTabId = null;
+    selectionMode = false;
+  }
   send({ message: "debugger_detached", tabId });
   log(`Chrome debugger detached from tab ${tabId}`);
 });
@@ -259,7 +292,12 @@ function connect() {
   socket.addEventListener("error", () => log("WebSocket error; waiting to reconnect"));
   socket.addEventListener("close", () => {
     socket = null;
+    inspectionTabId = null;
+    selectionMode = false;
     clearInterval(heartbeatTimer);
+    for (const [tabId, state] of tabsById) {
+      if (state.status === "managed") updateToolbarAction(tabId);
+    }
     scheduleReconnect();
   });
 }
@@ -273,6 +311,10 @@ chrome.tabs.onCreated.addListener(tab => {
   tabsById.set(tab.id, { status: "new", url: tab.url || "" });
 });
 
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  updateToolbarAction(tabId);
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete" && !changeInfo.url) return;
   const state = tabsById.get(tabId);
@@ -283,6 +325,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       log(`Managed tab ${tabId} navigated to ${tab.url}`);
       send({ message: "urlchange", tabId, url: tab.url });
     }
+    // Chrome clears tab-specific action state when the tab navigates.
+    updateToolbarAction(tabId);
     return;
   }
   sendInit(tab);
@@ -295,6 +339,33 @@ chrome.tabs.onRemoved.addListener(tabId => {
   debuggerTabs.delete(tabId);
   debuggerAttaching.delete(tabId);
   queuedDebuggerCommands.delete(tabId);
+  if (inspectionTabId === tabId) {
+    inspectionTabId = null;
+    selectionMode = false;
+  }
+});
+
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.type !== "inspection-state" && message?.type !== "inspection-set") return;
+
+  const { tabId } = message;
+  const available = Number.isInteger(tabId) && tabId === inspectionTabId &&
+    socket?.readyState === WebSocket.OPEN && debuggerTabs.has(tabId) &&
+    tabsById.get(tabId)?.status === "managed";
+  if (!available) {
+    respond({ available: false });
+    return;
+  }
+
+  if (message.type === "inspection-set" && typeof message.enabled === "boolean") {
+    // NetBeans routes this message to its current inspector through the socket.
+    if (!send({ message: "selection_mode", selectionMode: message.enabled })) {
+      respond({ available: false });
+      return;
+    }
+    selectionMode = message.enabled;
+  }
+  respond({ available: true, enabled: selectionMode });
 });
 
 chrome.alarms.onAlarm.addListener(alarm => {

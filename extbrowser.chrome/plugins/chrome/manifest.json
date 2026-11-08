@@ -1,11 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "NetBeans ReConnector ",
-  "version": "0.16",
+  "name": "Netbeans ReConnector",
+  "version": "0.24",
   "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgo89CrO8f/2srD2BGUP9+dG4IkTC2D3gzEjXITaMaQgy8B4ObVpkA3bc27qc7HB9jhVj8P51aAETr89u+AvFgCeFtvtva0h0oodKRC3dCkQLnEWPGi7mEKB98cRhZmQ1Wa9A9tg3plKsujwwWskaFEL/hO7uu7myF0qLIeuiG6wIDAQAB",
   "description": "Receives NetBeans reload messages and refreshes IDE-managed tabs.",
   "minimum_chrome_version": "120",
   "permissions": ["tabs", "alarms", "debugger"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_state": "disabled",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
   "background": {
     "service_worker": "service-worker.js"
   },
