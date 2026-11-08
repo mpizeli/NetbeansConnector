@@ -1,5 +1,7 @@
 # Netbeans ReConnector
 
+An unofficial Manifest V3 beta I vibe-coded after looking for a workaround in [apache/netbeans#6601](https://github.com/apache/netbeans/issues/6601).
+
 - Automatically refreshes the application tab when NetBeans requests a reload.
 - Supports Browser DOM and **Inspect in NetBeans Mode**. Open the extension menu to select an element on the page and locate it in NetBeans.
 
