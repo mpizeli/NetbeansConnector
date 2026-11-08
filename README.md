@@ -7,13 +7,14 @@ an accepted tab when NetBeans sends a `reload` message.
 
 The manifest includes the original Connector public key so Chrome assigns the
 same extension ID that NetBeans checks (`hafdlehgocfcodbgjnpecfajgkeejnaa`).
-The extension package itself is still a local Manifest V3 build, version 0.6.
+The extension package itself is still a local Manifest V3 build, version 0.16.
 
 ## Install for a local trial
 
 1. Open `chrome://extensions` in the Chrome profile you want NetBeans to use.
 2. Turn on **Developer mode**.
-3. Choose **Load unpacked** and select this folder.
+3. Choose **Load unpacked** and select the nested folder
+   `extbrowser.chrome/plugins/chrome` inside this folder.
    Confirm its extension ID is `hafdlehgocfcodbgjnpecfajgkeejnaa`.
 4. In NetBeans, choose **Chrome with NetBeans Connector** as the project browser
    and run the ZK project. This is the first path to try because NetBeans must
@@ -39,7 +40,13 @@ not start the listener.
 - Reloads bypass the browser cache, matching the old Connector behavior.
 - This first version targets the NetBeans Connector WebSocket protocol on
   loopback port `8008` and Chrome 120 or later.
-- It does not debug JavaScript, inspect the DOM, edit files, or hot-swap Java.
+- It forwards the Chrome DevTools Protocol commands needed by NetBeans' browser
+  integration. JavaScript debugging and DOM inspection have not been validated.
+- It reloads a tab only when NetBeans explicitly sends a `reload` message; it
+  does not automatically retry failed page loads.
+- Load the extension from `extbrowser.chrome/plugins/chrome`. NetBeans checks
+  the unpacked extension's path for this directory name when it determines
+  whether the Connector is installed.
 - The NetBeans runtime and project combination still needs a local trial. If
   NetBeans does not accept the `ready` or `init` messages, its websocket server
   protocol/version check will need adjustment.
